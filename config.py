@@ -11,5 +11,5 @@ ADMINS = [
 ]
 
 Lviv_Center_Coords = (49.8419, 24.0315)
-Lviv_Boundary_km = 10  # умовна відстань від центру до межі Львова
+Lviv_Boundary_km = 18  # умовна відстань від центру до межі Львова
 BASE_OUTSIDE_CITY_COST = 900
