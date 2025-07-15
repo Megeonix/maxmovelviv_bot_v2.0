@@ -1,24 +1,34 @@
-from utils import is_within_city
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.fsm.context import FSMContext
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.filters import CommandStart
+from aiogram.enums import ParseMode
+
+from keyboards import (
+    start_kb,
+    service_kb,
+    transport_kb,
+    hours_kb,
+    confirm_kb,
+    cargo_type_kb,
+)
+
+from logic import (
+    calculate_city_price,
+    calculate_out_of_city_price,
+)
+
+from utils import MIN_HOURS, CITY_PRICES, OUT_CITY_PRICES
 from services import get_distance_km
-from config import LVIV_CENTER
+from units import FSMOrder
+from texts import (
+    START_TEXT,
+    LOCATION_HINT,
+    CONFIRM_TEXT,
+    SERVICE_CONFIRM_TEMPLATE,
+    SERVICE_UTIL_TEMPLATE,
+    SERVICE_MOVE_TEMPLATE,
+    SEND_PHONE,
+)
 
-def calculate_out_of_city_price(
-    start: tuple, end: tuple, transport_rate: float
-) -> float:
-    """Розрахунок для перевезень за межами Львова."""
-    if is_within_city(*start):
-        border_to_start = 0
-    else:
-        border_to_start = get_distance_km(LVIV_CENTER, start) - 10
-
-    route_distance = get_distance_km(start, end)
-    total_distance = border_to_start + route_distance
-    price = 900 + total_distance * 2 * transport_rate
-    return round(price, 2)
-
-def calculate_city_price(car_type: str, hours: int, city_prices: dict, min_hours: dict) -> int:
-    """Розрахунок вартості перевезення по місту"""
-    hourly_rate = city_prices.get(car_type)
-    min_time = min_hours.get(car_type, 1)
-    effective_hours = max(hours, min_time)
-    return hourly_rate * effective_hours
