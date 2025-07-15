@@ -1,8 +1,11 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, Location
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from keyboards import main_menu_kb, service_kb, transport_kb, hours_kb, confirm_kb, cargo_type_kb
+from keyboards import (
+    main_menu_kb, service_kb, transport_kb, hours_kb,
+    confirm_kb, cargo_type_kb, location_button_kb
+)
 from texts import *
 from logic import (
     is_within_city,
@@ -16,6 +19,8 @@ router = Router()
 
 
 class OrderFSM(StatesGroup):
+    transfer_type = State()
+    service = State()
     transport_type = State()
     from_location = State()
     to_location = State()
@@ -26,25 +31,28 @@ class OrderFSM(StatesGroup):
     confirm = State()
 
 
-@router.message(F.text.lower() == "start" or F.text == "/start")
+@router.message(F.text.lower().in_(["start", "/start"]))
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(WELCOME_TEXT, reply_markup=main_menu_kb)
 
 
-@router.message(F.text == "По місту Львів")
+@router.message(F.text == "🚚 По місту Львів")
 async def choose_service_city(message: Message, state: FSMContext):
     await state.update_data(transfer_type="city")
     await message.answer(CHOOSE_SERVICE_TEXT, reply_markup=service_kb)
 
 
-@router.message(F.text == "За містом Львів")
+@router.message(F.text == "🌍 За містом Львів")
 async def choose_service_intercity(message: Message, state: FSMContext):
     await state.update_data(transfer_type="intercity")
     await message.answer(CHOOSE_SERVICE_TEXT, reply_markup=service_kb)
 
 
-@router.message(F.text.in_(["Перевезення вантажу", "Вантажні роботи + перевезення вантажу"]))
+@router.message(F.text.in_([
+    "Перевезення вантажу",
+    "Вантажні роботи + перевезення вантажу"
+]))
 async def choose_transport(message: Message, state: FSMContext):
     await state.update_data(service=message.text)
     await message.answer(CHOOSE_TRANSPORT_TEXT, reply_markup=transport_kb)
@@ -54,7 +62,7 @@ async def choose_transport(message: Message, state: FSMContext):
 @router.message(OrderFSM.transport_type)
 async def get_from_location(message: Message, state: FSMContext):
     await state.update_data(transport_type=message.text)
-    await message.answer(SEND_FROM_LOCATION_TEXT)
+    await message.answer(SEND_FROM_LOCATION_TEXT, reply_markup=location_button_kb)
     await message.answer(GEOLOCATION_TIP)
     await state.set_state(OrderFSM.from_location)
 
@@ -62,7 +70,7 @@ async def get_from_location(message: Message, state: FSMContext):
 @router.message(OrderFSM.from_location, F.location)
 async def get_to_location(message: Message, state: FSMContext):
     await state.update_data(from_location=(message.location.latitude, message.location.longitude))
-    await message.answer(SEND_TO_LOCATION_TEXT)
+    await message.answer(SEND_TO_LOCATION_TEXT, reply_markup=location_button_kb)
     await message.answer(GEOLOCATION_TIP)
     await state.set_state(OrderFSM.to_location)
 
@@ -81,10 +89,10 @@ async def process_locations(message: Message, state: FSMContext):
             await state.set_state(OrderFSM.hours)
         else:
             # Intercity transfer
-            price, distance_km = await calculate_intercity_price(data)
+            price, distance_km = await calculate_out_city_price(data)
             await state.update_data(price=price, distance=distance_km)
             await message.answer(
-                f"Орієнтовна відстань: {distance_km} км\n"
+                f"Орієнтовна відстань: {distance_km:.1f} км\n"
                 f"Орієнтовна вартість: {price} грн",
                 reply_markup=confirm_kb,
             )
@@ -109,7 +117,7 @@ async def final_price_city(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    if data["service"] == "Вантажні роботи":
+    if data.get("service") in ("Вантажні роботи", "Вантажні роботи (вантажники)"):
         price = calculate_cargo_work_price(data)
     else:
         price = calculate_city_price(data)
@@ -119,10 +127,10 @@ async def final_price_city(message: Message, state: FSMContext):
     await state.set_state(OrderFSM.confirm)
 
 
-@router.message(F.text == "Вантажні роботи")
+@router.message(F.text == "Вантажні роботи (вантажники)")
 async def standalone_cargo_work(message: Message, state: FSMContext):
     await state.update_data(service=message.text)
-    await message.answer(SEND_WORK_LOCATION_TEXT)
+    await message.answer(SEND_WORK_LOCATION_TEXT, reply_markup=location_button_kb)
     await message.answer(GEOLOCATION_TIP)
     await state.set_state(OrderFSM.from_location)
 
@@ -155,16 +163,18 @@ async def ask_phone(message: Message, state: FSMContext):
     await state.set_state(OrderFSM.phone)
 
 
-@router.message(OrderFSM.confirm, F.text == "Підтвердити")
-async def ask_phone_final(message: Message, state: FSMContext):
-    await message.answer("Вкажіть ваш номер телефону:")
+@router.callback_query(F.data == "confirm")
+async def ask_phone_final(call: CallbackQuery, state: FSMContext):
+    await call.message.answer("Вкажіть ваш номер телефону:")
     await state.set_state(OrderFSM.phone)
+    await call.answer()
 
 
-@router.message(OrderFSM.confirm, F.text == "Скасувати")
-async def cancel_order(message: Message, state: FSMContext):
-    await message.answer("Заявку скасовано. Ви можете почати заново: /start")
+@router.callback_query(F.data == "cancel")
+async def cancel_order(call: CallbackQuery, state: FSMContext):
+    await call.message.answer("Заявку скасовано. Ви можете почати заново: /start")
     await state.clear()
+    await call.answer()
 
 
 @router.message(OrderFSM.phone)
@@ -173,6 +183,6 @@ async def finish_order(message: Message, state: FSMContext):
     data = await state.get_data()
 
     location_name = await geocode_coords(data.get("from_location"))
-    msg = await send_admins_order(message.from_user.full_name, data, location_name)
+    await send_admins_order(message.from_user.full_name, data, location_name)
     await message.answer("Заявку надіслано. Наш менеджер зв’яжеться з вами.")
     await state.clear()
