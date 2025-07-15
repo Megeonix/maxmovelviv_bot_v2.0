@@ -193,7 +193,7 @@ async def finish_order(message: Message, state: FSMContext):
     await state.update_data(phone=message.text)
     data = await state.get_data()
 
-    location_name = await geocode_coords(data.get("from_location"))
+    location_name = geocode_coords(data.get("from_location"))
     await send_admins_order(message.from_user.full_name, data, location_name)
     await message.answer("Заявку надіслано. Наш менеджер зв’яжеться з вами.")
     await state.clear()
