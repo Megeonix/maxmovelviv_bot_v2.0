@@ -50,14 +50,29 @@ async def geocode_coords(coords):
         return "Локація"
 
 # --- Надіслати заявку адміністраторам ---
-async def send_admins_order(bot, text):
+from config import ADMIN_CHAT_IDS
+
+async def send_admins_order(bot, data, location_name):
     """
-    Надсилає повідомлення всім адміністраторам.
-    bot — це об'єкт Bot (import з bot.py).
-    text — текст заявки.
+    Відправка адміну заявки з усіма деталями.
     """
+    # Формуємо текст заявки з data
+    text = (
+        f"📝 <b>Нова заявка</b>\n"
+        f"Клієнт: {data.get('full_name') or '—'}\n"
+        f"Телефон: {data.get('phone') or '—'}\n"
+        f"Послуга: {data.get('service') or '—'}\n"
+        f"Тип перевезення: {data.get('transfer_type') or '—'}\n"
+        f"Тип транспорту: {data.get('transport_type') or '—'}\n"
+        f"З локації: {location_name or data.get('from_location')}\n"
+        f"В локацію: {data.get('to_location') or '—'}\n"
+        f"Тип вантажних робіт: {data.get('cargo_work_type') or '—'}\n"
+        f"Кількість годин: {data.get('hours') or '—'}\n"
+        f"Опис: {data.get('description') or '—'}\n"
+        f"Вартість: {data.get('price') or '—'} грн\n"
+    )
     for admin_id in ADMIN_CHAT_IDS:
         try:
             await bot.send_message(admin_id, text)
         except Exception as e:
-            print(f"Не вдалося надіслати повідомлення адміну {admin_id}: {e}")
+            print(f"Не вдалося надіслати адміну {admin_id}: {e}")
