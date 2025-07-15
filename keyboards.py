@@ -1,5 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-
+start_kb = main_menu_kb
 # Головне меню
 main_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
