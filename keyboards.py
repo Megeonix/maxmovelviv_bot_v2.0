@@ -23,14 +23,14 @@ service_kb = ReplyKeyboardMarkup(
 # Вибір типу транспорту
 transport_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="1. Бус до 1,5 т до 13м3")],
-        [KeyboardButton(text="2. Бус максі база до 2 т до 15 м3")],
-        [KeyboardButton(text="3. Фургон до 2 т до 20 м3")],
-        [KeyboardButton(text="4. Фургон до 2 т до 20 м3 з гідробортом")],
-        [KeyboardButton(text="5. Фургон до 3 т гідроборт до 30м3")],
-        [KeyboardButton(text="6. Фургон 5т гідроборт до 40м3")],
-        [KeyboardButton(text="7. Фургон до 10т до 70м3")],
-        [KeyboardButton(text="8. Інше авто")]
+        [KeyboardButton(text="Бус до 1,5 т до 13м3")],
+        [KeyboardButton(text="Бус максі база до 2 т до 15 м3")],
+        [KeyboardButton(text="Фургон до 2 т до 20 м3")],
+        [KeyboardButton(text="Фургон до 2 т до 20 м3 з гідробортом")],
+        [KeyboardButton(text="Фургон до 3 т гідроборт до 30м3")],
+        [KeyboardButton(text="Фургон 5т гідроборт до 40м3")],
+        [KeyboardButton(text="Фургон до 10т до 70м3")],
+        [KeyboardButton(text="Інше авто")]
     ],
     resize_keyboard=True
 )
@@ -70,4 +70,3 @@ location_button_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-start_kb = main_menu_kb
