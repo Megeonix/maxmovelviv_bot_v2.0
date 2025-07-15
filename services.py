@@ -3,6 +3,9 @@ from config import ORS_API_KEY, ADMIN_CHAT_IDS
 from bot_instance import bot
 
 def get_distance_km(start, end) -> float:
+    """
+    Отримує відстань (у км) між двома координатами через OpenRouteService.
+    """
     url = "https://api.openrouteservice.org/v2/directions/driving-car"
     headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
     body = {
@@ -21,39 +24,62 @@ def get_distance_km(start, end) -> float:
         print("Error getting distance:", e)
         return 0
 
-async def send_admins_order(user_name, data, location_name=None):
-    """Відправити заявку адміну(ам)"""
-    text = f"<b>Нова заявка від {user_name}</b>\n\n"
-    text += f"<b>Тип перевезення:</b> {data.get('transfer_type', '')}\n"
-    text += f"<b>Послуга:</b> {data.get('service', '')}\n"
-    text += f"<b>Тип транспорту:</b> {data.get('transport_type', '')}\n"
-    if location_name:
-        text += f"<b>Локація завантаження:</b> {location_name}\n"
-    if data.get('from_location'):
-        lat, lon = data['from_location']
-        text += f"<b>Координати завантаження:</b> {lat}, {lon}\n"
-    if data.get('to_location'):
-        lat, lon = data['to_location']
-        text += f"<b>Координати розвантаження:</b> {lat}, {lon}\n"
-    if data.get('cargo_work_type'):
-        text += f"<b>Тип вантажних робіт:</b> {data.get('cargo_work_type')}\n"
-    if data.get('hours'):
-        text += f"<b>Годин:</b> {data.get('hours')}\n"
-    if data.get('description'):
-        text += f"<b>Опис:</b> {data.get('description')}\n"
-    if data.get('price'):
-        text += f"<b>Ціна (розрахунок):</b> {data['price']} грн\n"
-    if data.get('phone'):
-        text += f"<b>Телефон:</b> {data['phone']}"
+def geocode_coords(coords):
+    """
+    Формує короткий лінк на Google Maps по координатах.
+    """
+    if not coords:
+        return "-"
+    lat, lon = coords
+    return f"https://maps.app.goo.gl/?q={lat},{lon}"
 
-    # Надсилаємо всім адміністраторам
+def make_admin_order_text(user_full_name: str, data: dict) -> str:
+    """
+    Формує текст заявки адміну з короткими посиланнями на Google Maps.
+    """
+    transfer_type = "По місту" if data.get("transfer_type") == "city" else "За містом"
+    service = data.get("service", "")
+    car_type = data.get("transport_type", "-")
+    hours = data.get("hours", "-")
+    price = data.get("price", "-")
+    phone = data.get("phone", "-")
+    from_coords = data.get("from_location")
+    to_coords = data.get("to_location")
+    description = data.get("description", "")
+
+    msg = f"<b>Нова заявка!</b>\n"
+    msg += f"👤 Клієнт: {user_full_name}\n"
+    msg += f"Тип перевезення: {transfer_type}\n"
+    msg += f"Послуга: {service}\n"
+    if car_type and service and "вантажу" in service:
+        msg += f"Тип транспорту: {car_type}\n"
+    if from_coords:
+        msg += (
+            f"Локація завантаження: <a href='{geocode_coords(from_coords)}'>"
+            f"{from_coords[0]:.6f}, {from_coords[1]:.6f}</a>\n"
+        )
+    if to_coords:
+        msg += (
+            f"Локація розвантаження: <a href='{geocode_coords(to_coords)}'>"
+            f"{to_coords[0]:.6f}, {to_coords[1]:.6f}</a>\n"
+        )
+    if hours != "-":
+        msg += f"Годин: {hours}\n"
+    if price != "-":
+        msg += f"Ціна: {price} грн\n"
+    if phone:
+        msg += f"Телефон: {phone}\n"
+    if description:
+        msg += f"Деталі/Опис: {description}\n"
+    return msg
+
+async def send_admins_order(user_full_name, data, location_name=None):
+    """
+    Надсилає заявку всім адміністраторам.
+    """
+    text = make_admin_order_text(user_full_name, data)
     for admin_id in ADMIN_CHAT_IDS:
         try:
-            await bot.send_message(admin_id, text)
+            await bot.send_message(admin_id, text, parse_mode="HTML", disable_web_page_preview=True)
         except Exception as e:
             print(f"Не вдалося надіслати адміну {admin_id}: {e}")
-
-async def geocode_coords(location: tuple) -> str:
-    """Опціональна функція — повертає адресу по координатам (можеш дописати або замінити на заглушку)."""
-    lat, lon = location
-    return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
