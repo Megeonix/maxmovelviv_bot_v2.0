@@ -1,18 +1,11 @@
 import asyncio
 import logging
-import os
-from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
+from aiogram import Dispatcher
 from handlers import router
-from config import BOT_TOKEN
+from bot_instance import bot  # Імпортуємо бот
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
     dp = Dispatcher()
     dp.include_router(router)
     await dp.start_polling(bot)
