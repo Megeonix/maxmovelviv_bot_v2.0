@@ -7,7 +7,8 @@ def calculate_city_price(car_type: str, hours: float, city_prices: dict, min_hou
     - враховує мінімальні години для кожного авто
     - тариф за годину для відповідного авто
     """
-    hours = max(hours, min_hours.get(car_type, 2))
+    min_hrs = min_hours.get(car_type, 2)
+    hours = max(hours, min_hrs)
     price_per_hour = city_prices.get(car_type)
     if price_per_hour is None:
         return 0.0  # для "по домовленості"
