@@ -1,12 +1,8 @@
 import requests
 from config import ORS_API_KEY, ADMIN_CHAT_IDS
+from bot_instance import bot
 
-# --- Отримати відстань через OpenRouteService ---
 def get_distance_km(start, end) -> float:
-    """
-    Повертає відстань у км між двома точками через ORS directions API.
-    start, end: (lat, lon)
-    """
     url = "https://api.openrouteservice.org/v2/directions/driving-car"
     headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
     body = {
@@ -25,54 +21,39 @@ def get_distance_km(start, end) -> float:
         print("Error getting distance:", e)
         return 0
 
-# --- Геокодування (отримати назву локації за координатами через ORS) ---
-async def geocode_coords(coords):
-    """
-    Повертає рядок з адресою для координат (lat, lon)
-    """
-    try:
-        url = f"https://api.openrouteservice.org/geocode/reverse"
-        params = {
-            "api_key": ORS_API_KEY,
-            "point.lat": coords[0],
-            "point.lon": coords[1],
-            "size": 1
-        }
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        if data["features"]:
-            return data["features"][0]["properties"].get("label", "Локація")
-        else:
-            return "Локація"
-    except Exception as e:
-        print("Error geocoding coords:", e)
-        return "Локація"
+async def send_admins_order(user_name, data, location_name=None):
+    """Відправити заявку адміну(ам)"""
+    text = f"<b>Нова заявка від {user_name}</b>\n\n"
+    text += f"<b>Тип перевезення:</b> {data.get('transfer_type', '')}\n"
+    text += f"<b>Послуга:</b> {data.get('service', '')}\n"
+    text += f"<b>Тип транспорту:</b> {data.get('transport_type', '')}\n"
+    if location_name:
+        text += f"<b>Локація завантаження:</b> {location_name}\n"
+    if data.get('from_location'):
+        lat, lon = data['from_location']
+        text += f"<b>Координати завантаження:</b> {lat}, {lon}\n"
+    if data.get('to_location'):
+        lat, lon = data['to_location']
+        text += f"<b>Координати розвантаження:</b> {lat}, {lon}\n"
+    if data.get('cargo_work_type'):
+        text += f"<b>Тип вантажних робіт:</b> {data.get('cargo_work_type')}\n"
+    if data.get('hours'):
+        text += f"<b>Годин:</b> {data.get('hours')}\n"
+    if data.get('description'):
+        text += f"<b>Опис:</b> {data.get('description')}\n"
+    if data.get('price'):
+        text += f"<b>Ціна (розрахунок):</b> {data['price']} грн\n"
+    if data.get('phone'):
+        text += f"<b>Телефон:</b> {data['phone']}"
 
-# --- Надіслати заявку адміністраторам ---
-from config import ADMIN_CHAT_IDS
-
-async def send_admins_order(bot, data, location_name):
-    """
-    Відправка адміну заявки з усіма деталями.
-    """
-    # Формуємо текст заявки з data
-    text = (
-        f"📝 <b>Нова заявка</b>\n"
-        f"Клієнт: {data.get('full_name') or '—'}\n"
-        f"Телефон: {data.get('phone') or '—'}\n"
-        f"Послуга: {data.get('service') or '—'}\n"
-        f"Тип перевезення: {data.get('transfer_type') or '—'}\n"
-        f"Тип транспорту: {data.get('transport_type') or '—'}\n"
-        f"З локації: {location_name or data.get('from_location')}\n"
-        f"В локацію: {data.get('to_location') or '—'}\n"
-        f"Тип вантажних робіт: {data.get('cargo_work_type') or '—'}\n"
-        f"Кількість годин: {data.get('hours') or '—'}\n"
-        f"Опис: {data.get('description') or '—'}\n"
-        f"Вартість: {data.get('price') or '—'} грн\n"
-    )
+    # Надсилаємо всім адміністраторам
     for admin_id in ADMIN_CHAT_IDS:
         try:
             await bot.send_message(admin_id, text)
         except Exception as e:
             print(f"Не вдалося надіслати адміну {admin_id}: {e}")
+
+async def geocode_coords(location: tuple) -> str:
+    """Опціональна функція — повертає адресу по координатам (можеш дописати або замінити на заглушку)."""
+    lat, lon = location
+    return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
