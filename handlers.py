@@ -7,7 +7,7 @@ from texts import *
 from logic import (
     is_within_city,
     calculate_city_price,
-    calculate_intercity_price,
+    calculate_out_city_price,
     calculate_cargo_work_price,
 )
 from services import send_admins_order, geocode_coords
