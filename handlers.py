@@ -14,6 +14,7 @@ from logic import (
     calculate_cargo_work_price,
 )
 from services import send_admins_order, geocode_coords
+from utils import CITY_PRICES, OUT_CITY_PRICES, MIN_HOURS
 
 router = Router()
 
@@ -89,7 +90,13 @@ async def process_locations(message: Message, state: FSMContext):
             await state.set_state(OrderFSM.hours)
         else:
             # Intercity transfer
-            price, distance_km = await calculate_out_city_price(data)
+            car_type = data.get("transport_type")
+            from_location = data.get("from_location")
+            to_location = data.get("to_location")
+            price = calculate_out_city_price(from_location, to_location, car_type, OUT_CITY_PRICES)
+            # Можна підрахувати відстань:
+            from services import get_distance_km
+            distance_km = get_distance_km(from_location, to_location)
             await state.update_data(price=price, distance=distance_km)
             await message.answer(
                 f"Орієнтовна відстань: {distance_km:.1f} км\n"
@@ -118,9 +125,13 @@ async def final_price_city(message: Message, state: FSMContext):
     data = await state.get_data()
 
     if data.get("service") in ("Вантажні роботи", "Вантажні роботи (вантажники)"):
-        price = calculate_cargo_work_price(data)
+        work_type = data.get("cargo_work_type")
+        hours = data.get("hours")
+        price = calculate_cargo_work_price(work_type, hours)
     else:
-        price = calculate_city_price(data)
+        car_type = data.get("transport_type")
+        hours = data.get("hours")
+        price = calculate_city_price(car_type, hours, CITY_PRICES, MIN_HOURS)
 
     await state.update_data(price=price)
     await message.answer(f"Орієнтовна вартість: {price} грн", reply_markup=confirm_kb)
