@@ -1,8 +1,13 @@
 import requests
-from config import ORS_API_KEY
+from config import ORS_API_KEY, ADMIN_CHAT_IDS
 
+# --- Отримати відстань через OpenRouteService ---
 def get_distance_km(start, end) -> float:
-    url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
+    """
+    Повертає відстань у км між двома точками через ORS directions API.
+    start, end: (lat, lon)
+    """
+    url = "https://api.openrouteservice.org/v2/directions/driving-car"
     headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
     body = {
         "coordinates": [
@@ -20,15 +25,39 @@ def get_distance_km(start, end) -> float:
         print("Error getting distance:", e)
         return 0
 
-# Функція для відправки заявки всім адміністраторам
-async def send_admins_order(bot, order_text, admin_ids):
-    for admin_id in admin_ids:
+# --- Геокодування (отримати назву локації за координатами через ORS) ---
+async def geocode_coords(coords):
+    """
+    Повертає рядок з адресою для координат (lat, lon)
+    """
+    try:
+        url = f"https://api.openrouteservice.org/geocode/reverse"
+        params = {
+            "api_key": ORS_API_KEY,
+            "point.lat": coords[0],
+            "point.lon": coords[1],
+            "size": 1
+        }
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if data["features"]:
+            return data["features"][0]["properties"].get("label", "Локація")
+        else:
+            return "Локація"
+    except Exception as e:
+        print("Error geocoding coords:", e)
+        return "Локація"
+
+# --- Надіслати заявку адміністраторам ---
+async def send_admins_order(bot, text):
+    """
+    Надсилає повідомлення всім адміністраторам.
+    bot — це об'єкт Bot (import з bot.py).
+    text — текст заявки.
+    """
+    for admin_id in ADMIN_CHAT_IDS:
         try:
-            await bot.send_message(admin_id, order_text)
+            await bot.send_message(admin_id, text)
         except Exception as e:
             print(f"Не вдалося надіслати повідомлення адміну {admin_id}: {e}")
-
-# Якщо потрібно: заглушка (наприклад, отримати адресу за координатами)
-def geocode_coords(coords):
-    # Можна підключити ORS reverse geocoding або залишити заглушку
-    return f"https://maps.google.com/?q={coords[0]},{coords[1]}"
