@@ -6,7 +6,7 @@ def get_distance_km(start, end) -> float:
     """
     Отримує відстань (у км) між двома координатами через OpenRouteService.
     """
-    url = "https://api.openrouteservice.org/v2/directions/driving-car"
+    url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
     headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
     body = {
         "coordinates": [
