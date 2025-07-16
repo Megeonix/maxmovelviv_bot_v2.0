@@ -31,7 +31,7 @@ def geocode_coords(coords):
     if not coords:
         return "-"
     lat, lon = coords
-    return f"https://maps.app.goo.gl/?q={lat},{lon}"
+    return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
 
 def make_admin_order_text(user_full_name: str, data: dict) -> str:
     """
